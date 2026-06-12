@@ -1,0 +1,875 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>FIFA World Cup 2026 Match Predictor</title>
+  <meta name="description" content="FIFA World Cup 2026 Match Predictor — Poisson regression model by Garvita Varshney, Sophomore at MUJ"/>
+  <meta name="author" content="Garvita Varshney"/>
+  <style>
+    :root {
+      --bg: #0a0e1a;
+      --surface: #111827;
+      --surface2: #1a2236;
+      --border: rgba(255,255,255,0.08);
+      --border2: rgba(255,255,255,0.14);
+      --text: #f0f4ff;
+      --muted: #8896b3;
+      --hint: #4a5568;
+      --accent: #3b82f6;
+      --accent2: #60a5fa;
+      --green: #10b981;
+      --amber: #f59e0b;
+      --red: #ef4444;
+      --coral: #f97316;
+      --radius: 10px;
+      --radius-lg: 14px;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      font-size: 15px;
+    }
+
+    /* ── TOP NAV ── */
+    nav {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 0 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      height: 56px;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    .nav-brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-weight: 600;
+      font-size: 16px;
+      color: var(--text);
+      text-decoration: none;
+    }
+    .nav-brand span { color: var(--accent2); }
+    .nav-author {
+      font-size: 12px;
+      color: var(--muted);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .nav-author strong { color: var(--text); font-weight: 500; }
+
+    /* ── HERO ── */
+    .hero {
+      background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 50%, #0f172a 100%);
+      padding: 48px 24px 40px;
+      text-align: center;
+      border-bottom: 1px solid var(--border);
+      position: relative;
+      overflow: hidden;
+    }
+    .hero::before {
+      content: '';
+      position: absolute;
+      top: -80px; left: 50%;
+      transform: translateX(-50%);
+      width: 400px; height: 400px;
+      background: radial-gradient(circle, rgba(59,130,246,0.12) 0%, transparent 70%);
+      pointer-events: none;
+    }
+    .hero-tag {
+      display: inline-block;
+      background: rgba(59,130,246,0.15);
+      border: 1px solid rgba(59,130,246,0.3);
+      color: var(--accent2);
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      padding: 4px 12px;
+      border-radius: 99px;
+      margin-bottom: 16px;
+    }
+    .hero h1 {
+      font-size: clamp(24px, 5vw, 38px);
+      font-weight: 700;
+      line-height: 1.2;
+      margin-bottom: 12px;
+      background: linear-gradient(135deg, #e0e7ff, #93c5fd);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .hero p {
+      color: var(--muted);
+      font-size: 15px;
+      max-width: 480px;
+      margin: 0 auto 24px;
+      line-height: 1.6;
+    }
+    .hero-stats {
+      display: flex;
+      justify-content: center;
+      gap: 32px;
+      flex-wrap: wrap;
+    }
+    .hero-stat { text-align: center; }
+    .hero-stat-n { font-size: 22px; font-weight: 700; color: var(--accent2); }
+    .hero-stat-l { font-size: 11px; color: var(--hint); margin-top: 2px; text-transform: uppercase; letter-spacing: 0.05em; }
+
+    /* ── MAIN ── */
+    main { max-width: 900px; margin: 0 auto; padding: 32px 16px 80px; }
+
+    /* ── CARD ── */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+      margin-bottom: 20px;
+    }
+    .card-header {
+      padding: 14px 20px;
+      border-bottom: 1px solid var(--border);
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--muted);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    /* ── TEAM SELECTOR ── */
+    .team-grid {
+      display: grid;
+      grid-template-columns: 1fr 48px 1fr;
+      gap: 0;
+    }
+    .team-panel { padding: 20px; }
+    .team-panel:first-child { border-right: 1px solid var(--border); }
+    .vs-col {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--hint);
+    }
+    .team-flag-big { font-size: 36px; margin-bottom: 10px; display: block; }
+    .team-select {
+      width: 100%;
+      background: var(--surface2);
+      border: 1px solid var(--border2);
+      color: var(--text);
+      padding: 9px 12px;
+      border-radius: var(--radius);
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      outline: none;
+      appearance: none;
+      -webkit-appearance: none;
+    }
+    .team-select:focus { border-color: var(--accent); }
+    .team-meta {
+      margin-top: 10px;
+      font-size: 12px;
+      color: var(--muted);
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    .team-meta span { display: flex; align-items: center; gap: 4px; }
+    .form-dot {
+      display: inline-block;
+      width: 9px; height: 9px;
+      border-radius: 50%;
+    }
+
+    /* ── CONTROLS ── */
+    .controls-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0;
+    }
+    .control-cell {
+      padding: 14px 20px;
+      border-right: 1px solid var(--border);
+    }
+    .control-cell:last-child { border-right: none; }
+    .control-cell label { font-size: 11px; color: var(--muted); display: block; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.05em; }
+    .control-cell select {
+      background: transparent;
+      border: none;
+      color: var(--text);
+      font-size: 14px;
+      cursor: pointer;
+      outline: none;
+      width: 100%;
+    }
+    .control-cell select option { background: #1a2236; }
+
+    /* ── PREDICT BTN ── */
+    .predict-btn {
+      width: 100%;
+      padding: 14px;
+      background: var(--accent);
+      border: none;
+      border-radius: var(--radius);
+      color: #fff;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.15s, transform 0.1s;
+      margin-bottom: 20px;
+      letter-spacing: 0.02em;
+    }
+    .predict-btn:hover { background: #2563eb; }
+    .predict-btn:active { transform: scale(0.99); }
+
+    /* ── RESULT CARD ── */
+    .result-hidden { display: none; }
+
+    .scoreline {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 20px;
+      padding: 28px 20px 20px;
+    }
+    .score-side { text-align: center; flex: 1; }
+    .score-flag { font-size: 32px; margin-bottom: 6px; }
+    .score-name { font-size: 13px; color: var(--muted); margin-bottom: 8px; }
+    .score-num {
+      font-size: 52px;
+      font-weight: 800;
+      line-height: 1;
+      color: var(--text);
+    }
+    .score-xg { font-size: 11px; color: var(--hint); margin-top: 6px; }
+    .score-sep { font-size: 32px; color: var(--hint); font-weight: 300; }
+
+    .outcome-strip {
+      text-align: center;
+      padding: 12px 20px 20px;
+    }
+    .outcome-pill {
+      display: inline-block;
+      padding: 6px 18px;
+      border-radius: 99px;
+      font-size: 13px;
+      font-weight: 600;
+    }
+    .pill-home { background: rgba(59,130,246,0.15); color: #93c5fd; border: 1px solid rgba(59,130,246,0.3); }
+    .pill-draw { background: rgba(100,116,139,0.2); color: #94a3b8; border: 1px solid rgba(100,116,139,0.3); }
+    .pill-away { background: rgba(249,115,22,0.15); color: #fdba74; border: 1px solid rgba(249,115,22,0.3); }
+
+    /* ── PROB BARS ── */
+    .prob-section { padding: 0 20px 20px; }
+    .prob-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 10px;
+      font-size: 13px;
+    }
+    .prob-label { width: 90px; color: var(--muted); font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .prob-track {
+      flex: 1;
+      height: 6px;
+      background: rgba(255,255,255,0.06);
+      border-radius: 99px;
+      overflow: hidden;
+    }
+    .prob-fill { height: 100%; border-radius: 99px; transition: width 0.7s ease; }
+    .prob-pct { width: 38px; text-align: right; font-weight: 600; color: var(--text); font-size: 13px; }
+
+    /* ── TABS ── */
+    .tab-bar {
+      display: flex;
+      border-bottom: 1px solid var(--border);
+      padding: 0 20px;
+      gap: 4px;
+    }
+    .tab {
+      padding: 10px 14px;
+      font-size: 12px;
+      font-weight: 500;
+      cursor: pointer;
+      color: var(--muted);
+      border-bottom: 2px solid transparent;
+      margin-bottom: -1px;
+      background: none;
+      border-top: none;
+      border-left: none;
+      border-right: none;
+      transition: color 0.12s;
+    }
+    .tab.active { color: var(--text); border-bottom-color: var(--accent2); }
+    .tab-pane { display: none; padding: 16px 20px; }
+    .tab-pane.active { display: block; }
+
+    /* ── HEATMAP ── */
+    .heatmap-wrap { overflow-x: auto; }
+    .heatmap-x { display: flex; gap: 5px; margin-left: 36px; margin-bottom: 5px; }
+    .heatmap-x span { width: 34px; text-align: center; font-size: 10px; color: var(--hint); }
+    .heatmap-row { display: flex; gap: 5px; margin-bottom: 5px; align-items: center; }
+    .hm-label { width: 30px; font-size: 10px; color: var(--hint); text-align: right; margin-right: 6px; }
+    .hm-cell {
+      width: 34px; height: 34px;
+      border-radius: 5px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 10px; font-weight: 600;
+    }
+    .heatmap-legend { font-size: 11px; color: var(--hint); margin-top: 10px; }
+
+    /* ── H2H TABLE ── */
+    .h2h-table { width: 100%; font-size: 13px; border-collapse: collapse; }
+    .h2h-table th {
+      font-size: 11px; font-weight: 600; color: var(--hint);
+      text-align: left; padding: 6px 10px;
+      border-bottom: 1px solid var(--border);
+      text-transform: uppercase; letter-spacing: 0.05em;
+    }
+    .h2h-table td { padding: 10px 10px; border-bottom: 1px solid var(--border); color: var(--text); }
+    .h2h-table tr:last-child td { border-bottom: none; }
+    .res-badge { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600; }
+    .res-W { background: rgba(16,185,129,0.15); color: #6ee7b7; }
+    .res-D { background: rgba(100,116,139,0.2); color: #94a3b8; }
+    .res-L { background: rgba(239,68,68,0.15); color: #fca5a5; }
+
+    /* ── STATS MINI ── */
+    .stats-mini {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      border-top: 1px solid var(--border);
+    }
+    .stat-cell {
+      text-align: center;
+      padding: 14px 10px;
+      border-right: 1px solid var(--border);
+    }
+    .stat-cell:last-child { border-right: none; }
+    .stat-n { font-size: 20px; font-weight: 700; color: var(--accent2); }
+    .stat-l { font-size: 11px; color: var(--hint); margin-top: 3px; }
+
+    /* ── FACTORS ── */
+    .factors-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; padding: 16px 20px; }
+    .factor {
+      background: var(--surface2);
+      border-radius: var(--radius);
+      padding: 10px 14px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 13px;
+      color: var(--muted);
+    }
+    .factor-val { font-weight: 600; color: var(--text); font-size: 12px; }
+
+    /* ── GROUPS SECTION ── */
+    .section-title {
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 12px;
+      margin-top: 36px;
+    }
+    .groups-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+      gap: 12px;
+    }
+    .group-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+    }
+    .group-head {
+      padding: 10px 14px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .group-name-lbl { font-size: 13px; font-weight: 600; color: var(--text); }
+    .group-dates-lbl { font-size: 11px; color: var(--hint); }
+    .team-row-g {
+      padding: 8px 14px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      border-bottom: 1px solid var(--border);
+      font-size: 13px;
+    }
+    .team-row-g:last-child { border-bottom: none; }
+    .tg-flag { font-size: 18px; width: 22px; }
+    .tg-info { flex: 1; }
+    .tg-name { color: var(--text); }
+    .tg-conf { font-size: 11px; color: var(--hint); }
+    .tg-badge {
+      font-size: 10px; padding: 2px 7px;
+      border-radius: 99px; font-weight: 600; white-space: nowrap;
+    }
+    .tg-host { background: rgba(59,130,246,0.15); color: #93c5fd; }
+    .tg-holder { background: rgba(245,158,11,0.15); color: #fde68a; }
+    .tg-debut { background: rgba(16,185,129,0.15); color: #6ee7b7; }
+
+    /* ── FOOTER ── */
+    footer {
+      border-top: 1px solid var(--border);
+      margin-top: 60px;
+      padding: 28px 24px;
+      text-align: center;
+    }
+    .footer-name {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text);
+      margin-bottom: 4px;
+    }
+    .footer-meta { font-size: 12px; color: var(--muted); }
+    .footer-copy {
+      margin-top: 16px;
+      font-size: 11px;
+      color: var(--hint);
+    }
+    .footer-model {
+      margin-top: 12px;
+      font-size: 11px;
+      color: var(--hint);
+      max-width: 500px;
+      margin-left: auto;
+      margin-right: auto;
+      line-height: 1.6;
+    }
+
+    /* ── RESPONSIVE ── */
+    @media (max-width: 560px) {
+      .team-grid { grid-template-columns: 1fr; }
+      .vs-col { padding: 8px; border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); }
+      .team-panel:first-child { border-right: none; border-bottom: 1px solid var(--border); }
+      .controls-row { grid-template-columns: 1fr; }
+      .control-cell { border-right: none; border-bottom: 1px solid var(--border); }
+      .hero-stats { gap: 20px; }
+      .factors-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <a class="nav-brand" href="#">⚽ <span>FIFA 2026</span> Predictor</a>
+  <div class="nav-author">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
+    <strong>Garvita Varshney</strong>&nbsp;· Sophomore @ MUJ
+  </div>
+</nav>
+
+<!-- HERO -->
+<div class="hero">
+  <div class="hero-tag">CSE Project · 2026</div>
+  <h1>FIFA World Cup 2026<br>Match Predictor</h1>
+  <p>Poisson regression + Elo ratings model for all 48 teams across 12 groups. Select any matchup and get win probabilities, scoreline predictions, and a full score heatmap.</p>
+  <div class="hero-stats">
+    <div class="hero-stat"><div class="hero-stat-n">48</div><div class="hero-stat-l">Teams</div></div>
+    <div class="hero-stat"><div class="hero-stat-n">12</div><div class="hero-stat-l">Groups</div></div>
+    <div class="hero-stat"><div class="hero-stat-n">104</div><div class="hero-stat-l">Matches</div></div>
+    <div class="hero-stat"><div class="hero-stat-n">~53%</div><div class="hero-stat-l">Model accuracy</div></div>
+  </div>
+</div>
+
+<!-- MAIN -->
+<main>
+
+  <!-- PREDICTOR -->
+  <p class="section-title">Match Predictor</p>
+
+  <div class="card">
+    <div class="card-header"><span>Select teams</span></div>
+    <div class="team-grid">
+      <div class="team-panel">
+        <span class="team-flag-big" id="flag-home">🇧🇷</span>
+        <select class="team-select" id="home-team" onchange="updateTeam('home')"></select>
+        <div class="team-meta" id="meta-home"></div>
+      </div>
+      <div class="vs-col">vs</div>
+      <div class="team-panel">
+        <span class="team-flag-big" id="flag-away">🇩🇪</span>
+        <select class="team-select" id="away-team" onchange="updateTeam('away')"></select>
+        <div class="team-meta" id="meta-away"></div>
+      </div>
+    </div>
+    <div class="controls-row">
+      <div class="control-cell">
+        <label>Tournament stage</label>
+        <select id="stage">
+          <option value="group">Group stage</option>
+          <option value="r16">Round of 16</option>
+          <option value="qf">Quarter-final</option>
+          <option value="sf">Semi-final</option>
+          <option value="final">Final</option>
+        </select>
+      </div>
+      <div class="control-cell">
+        <label>Venue</label>
+        <select id="venue">
+          <option value="neutral">Neutral (USA 2026)</option>
+          <option value="home">Home advantage</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <button class="predict-btn" onclick="predict()">⚡ Predict match outcome</button>
+
+  <!-- RESULT -->
+  <div id="result-card" class="card result-hidden">
+    <div class="scoreline">
+      <div class="score-side">
+        <div class="score-flag" id="r-flag-home">🇧🇷</div>
+        <div class="score-name" id="r-name-home">Brazil</div>
+        <div class="score-num" id="r-score-home">2</div>
+        <div class="score-xg" id="r-xg-home">xG: 1.82</div>
+      </div>
+      <div class="score-sep">–</div>
+      <div class="score-side">
+        <div class="score-flag" id="r-flag-away">🇩🇪</div>
+        <div class="score-name" id="r-name-away">Germany</div>
+        <div class="score-num" id="r-score-away">1</div>
+        <div class="score-xg" id="r-xg-away">xG: 1.54</div>
+      </div>
+    </div>
+    <div class="outcome-strip">
+      <span class="outcome-pill pill-home" id="r-outcome">Brazil win likely</span>
+      <div style="font-size:12px;color:var(--hint);margin-top:8px;" id="r-score-pct">Most probable scoreline (21%)</div>
+    </div>
+    <div class="tab-bar">
+      <button class="tab active" id="tab-probs" onclick="switchTab('probs')">Probabilities</button>
+      <button class="tab" id="tab-heatmap" onclick="switchTab('heatmap')">Score heatmap</button>
+      <button class="tab" id="tab-h2h" onclick="switchTab('h2h')">Head-to-head</button>
+    </div>
+    <div class="tab-pane active" id="pane-probs">
+      <div id="prob-bars"></div>
+      <div class="stats-mini" id="stats-mini"></div>
+    </div>
+    <div class="tab-pane" id="pane-heatmap">
+      <div class="heatmap-wrap" id="heatmap-wrap"></div>
+    </div>
+    <div class="tab-pane" id="pane-h2h">
+      <div id="h2h-content"></div>
+    </div>
+    <div class="factors-grid" id="factors-grid"></div>
+  </div>
+
+  <!-- GROUPS -->
+  <p class="section-title">All 48 teams — Groups A to L</p>
+  <div class="groups-grid" id="groups-grid"></div>
+
+</main>
+
+<!-- FOOTER -->
+<footer>
+  <div class="footer-name">Garvita Varshney</div>
+  <div class="footer-meta">Sophomore, Computer Science &amp; Engineering · Manipal University Jaipur</div>
+  <div class="footer-model">
+    Model: Bivariate Poisson regression with Elo-based attack/defence strength, home advantage weighting, tournament stage dampening, and rolling form adjustment.
+  </div>
+  <div class="footer-copy">© 2026 Garvita Varshney · All rights reserved · Built as a CSE academic project</div>
+</footer>
+
+<script>
+/* ═══════════════════════════════════════════════
+   DATA
+═══════════════════════════════════════════════ */
+const TEAMS = [
+  { name:"Brazil", flag:"🇧🇷", elo:2074, rank:6, avgGoals:2.1, form:[1,1,1,0,1], conf:"CONMEBOL", group:"C" },
+  { name:"Argentina", flag:"🇦🇷", elo:2071, rank:1, avgGoals:2.0, form:[1,1,1,1,0], conf:"CONMEBOL", group:"J", note:"holder" },
+  { name:"France", flag:"🇫🇷", elo:2051, rank:2, avgGoals:1.9, form:[1,0,1,1,1], conf:"UEFA", group:"I" },
+  { name:"England", flag:"🏴󠁧󠁢󠁥󠁮󠁧󠁿", elo:2032, rank:4, avgGoals:1.8, form:[1,1,0,1,1], conf:"UEFA", group:"L" },
+  { name:"Spain", flag:"🇪🇸", elo:2028, rank:3, avgGoals:1.75, form:[1,1,1,0,1], conf:"UEFA", group:"H" },
+  { name:"Portugal", flag:"🇵🇹", elo:2016, rank:5, avgGoals:1.7, form:[1,0,1,1,1], conf:"UEFA", group:"K" },
+  { name:"Belgium", flag:"🇧🇪", elo:2001, rank:7, avgGoals:1.65, form:[0,1,1,1,0], conf:"UEFA", group:"G" },
+  { name:"Germany", flag:"🇩🇪", elo:1993, rank:8, avgGoals:1.8, form:[1,1,0,1,0], conf:"UEFA", group:"E" },
+  { name:"Netherlands", flag:"🇳🇱", elo:1989, rank:9, avgGoals:1.6, form:[1,0,1,1,1], conf:"UEFA", group:"F" },
+  { name:"Croatia", flag:"🇭🇷", elo:1978, rank:10, avgGoals:1.4, form:[0,1,1,0,1], conf:"UEFA", group:"L" },
+  { name:"Morocco", flag:"🇲🇦", elo:1960, rank:11, avgGoals:1.35, form:[1,1,0,1,0], conf:"CAF", group:"C" },
+  { name:"United States", flag:"🇺🇸", elo:1943, rank:12, avgGoals:1.4, form:[0,1,0,1,1], conf:"CONCACAF", group:"D", note:"host" },
+  { name:"Uruguay", flag:"🇺🇾", elo:1937, rank:13, avgGoals:1.5, form:[1,0,1,0,1], conf:"CONMEBOL", group:"H" },
+  { name:"Colombia", flag:"🇨🇴", elo:1925, rank:14, avgGoals:1.45, form:[1,1,0,0,1], conf:"CONMEBOL", group:"K" },
+  { name:"Senegal", flag:"🇸🇳", elo:1910, rank:15, avgGoals:1.3, form:[0,1,1,1,0], conf:"CAF", group:"I" },
+  { name:"Japan", flag:"🇯🇵", elo:1903, rank:16, avgGoals:1.3, form:[1,0,1,1,0], conf:"AFC", group:"F" },
+  { name:"Mexico", flag:"🇲🇽", elo:1898, rank:17, avgGoals:1.35, form:[1,1,0,0,1], conf:"CONCACAF", group:"A", note:"host" },
+  { name:"Ecuador", flag:"🇪🇨", elo:1868, rank:25, avgGoals:1.2, form:[1,0,1,0,1], conf:"CONMEBOL", group:"E" },
+  { name:"Australia", flag:"🇦🇺", elo:1855, rank:24, avgGoals:1.2, form:[0,1,0,1,0], conf:"AFC", group:"D" },
+  { name:"South Korea", flag:"🇰🇷", elo:1875, rank:20, avgGoals:1.25, form:[0,0,1,1,1], conf:"AFC", group:"A" },
+  { name:"Iran", flag:"🇮🇷", elo:1860, rank:21, avgGoals:1.15, form:[1,0,0,1,1], conf:"AFC", group:"G" },
+  { name:"Saudi Arabia", flag:"🇸🇦", elo:1840, rank:23, avgGoals:1.1, form:[1,0,1,0,0], conf:"AFC", group:"H" },
+  { name:"Canada", flag:"🇨🇦", elo:1872, rank:22, avgGoals:1.3, form:[0,1,0,1,1], conf:"CONCACAF", group:"B", note:"host" },
+  { name:"Switzerland", flag:"🇨🇭", elo:1920, rank:19, avgGoals:1.4, form:[1,1,0,1,0], conf:"UEFA", group:"B" },
+  { name:"Austria", flag:"🇦🇹", elo:1910, rank:18, avgGoals:1.35, form:[0,1,1,0,1], conf:"UEFA", group:"J" },
+  { name:"Norway", flag:"🇳🇴", elo:1885, rank:26, avgGoals:1.5, form:[1,1,0,1,0], conf:"UEFA", group:"I" },
+  { name:"Sweden", flag:"🇸🇪", elo:1870, rank:27, avgGoals:1.3, form:[0,1,1,0,1], conf:"UEFA", group:"F" },
+  { name:"Czechia", flag:"🇨🇿", elo:1855, rank:28, avgGoals:1.2, form:[1,0,1,1,0], conf:"UEFA", group:"A" },
+  { name:"Türkiye", flag:"🇹🇷", elo:1848, rank:29, avgGoals:1.25, form:[0,1,0,1,1], conf:"UEFA", group:"D" },
+  { name:"Scotland", flag:"🏴󠁧󠁢󠁳󠁣󠁴󠁿", elo:1830, rank:30, avgGoals:1.2, form:[1,0,0,1,1], conf:"UEFA", group:"C" },
+  { name:"Tunisia", flag:"🇹🇳", elo:1810, rank:31, avgGoals:1.1, form:[0,1,1,0,0], conf:"CAF", group:"F" },
+  { name:"Egypt", flag:"🇪🇬", elo:1820, rank:33, avgGoals:1.15, form:[1,0,1,0,1], conf:"CAF", group:"G" },
+  { name:"Côte d'Ivoire", flag:"🇨🇮", elo:1825, rank:32, avgGoals:1.2, form:[0,1,0,1,1], conf:"CAF", group:"E" },
+  { name:"Algeria", flag:"🇩🇿", elo:1805, rank:35, avgGoals:1.1, form:[1,1,0,0,1], conf:"CAF", group:"J" },
+  { name:"Senegal", flag:"🇸🇳", elo:1910, rank:15, avgGoals:1.3, form:[0,1,1,1,0], conf:"CAF", group:"I" },
+  { name:"Ghana", flag:"🇬🇭", elo:1800, rank:36, avgGoals:1.1, form:[0,1,0,1,0], conf:"CAF", group:"L" },
+  { name:"DR Congo", flag:"🇨🇩", elo:1795, rank:37, avgGoals:1.05, form:[1,0,1,0,1], conf:"CAF", group:"K" },
+  { name:"South Africa", flag:"🇿🇦", elo:1780, rank:38, avgGoals:1.0, form:[0,0,1,1,0], conf:"CAF", group:"A" },
+  { name:"Cape Verde", flag:"🇨🇻", elo:1770, rank:39, avgGoals:1.0, form:[1,0,0,1,0], conf:"CAF", group:"H", note:"debut" },
+  { name:"Morocco", flag:"🇲🇦", elo:1960, rank:11, avgGoals:1.35, form:[1,1,0,1,0], conf:"CAF", group:"C" },
+  { name:"Qatar", flag:"🇶🇦", elo:1790, rank:40, avgGoals:1.05, form:[0,1,0,0,1], conf:"AFC", group:"B" },
+  { name:"Iraq", flag:"🇮🇶", elo:1775, rank:41, avgGoals:1.0, form:[1,0,1,0,0], conf:"AFC", group:"I" },
+  { name:"Jordan", flag:"🇯🇴", elo:1760, rank:66, avgGoals:0.95, form:[0,1,0,1,0], conf:"AFC", group:"J", note:"debut" },
+  { name:"Uzbekistan", flag:"🇺🇿", elo:1755, rank:42, avgGoals:1.0, form:[1,0,0,1,1], conf:"AFC", group:"K", note:"debut" },
+  { name:"Paraguay", flag:"🇵🇾", elo:1820, rank:34, avgGoals:1.1, form:[0,1,1,0,1], conf:"CONMEBOL", group:"D" },
+  { name:"Bosnia & Herzegovina", flag:"🇧🇦", elo:1810, rank:43, avgGoals:1.1, form:[0,0,1,1,0], conf:"UEFA", group:"B" },
+  { name:"New Zealand", flag:"🇳🇿", elo:1745, rank:44, avgGoals:0.95, form:[0,1,0,0,1], conf:"OFC", group:"G" },
+  { name:"Panama", flag:"🇵🇦", elo:1750, rank:45, avgGoals:0.9, form:[1,0,0,0,1], conf:"CONCACAF", group:"L" },
+  { name:"Haiti", flag:"🇭🇹", elo:1740, rank:46, avgGoals:0.9, form:[0,1,0,0,0], conf:"CONCACAF", group:"C" },
+  { name:"Curaçao", flag:"🇨🇼", elo:1730, rank:47, avgGoals:0.85, form:[1,0,0,0,1], conf:"CONCACAF", group:"E", note:"debut" },
+];
+
+// Deduplicate by name
+const TEAM_MAP = {};
+TEAMS.forEach(t => { if (!TEAM_MAP[t.name]) TEAM_MAP[t.name] = t; });
+const TEAM_LIST = Object.values(TEAM_MAP).sort((a,b) => a.name.localeCompare(b.name));
+
+const GROUPS_DATA = [
+  { id:"A", dates:"Jun 11–24", teams:["Mexico","South Korea","South Africa","Czechia"] },
+  { id:"B", dates:"Jun 12–24", teams:["Canada","Bosnia & Herzegovina","Qatar","Switzerland"] },
+  { id:"C", dates:"Jun 13–24", teams:["Brazil","Morocco","Haiti","Scotland"] },
+  { id:"D", dates:"Jun 12–25", teams:["United States","Paraguay","Australia","Türkiye"] },
+  { id:"E", dates:"Jun 14–25", teams:["Germany","Ecuador","Côte d'Ivoire","Curaçao"] },
+  { id:"F", dates:"Jun 14–25", teams:["Netherlands","Japan","Sweden","Tunisia"] },
+  { id:"G", dates:"Jun 15–26", teams:["Belgium","Egypt","Iran","New Zealand"] },
+  { id:"H", dates:"Jun 15–26", teams:["Spain","Uruguay","Saudi Arabia","Cape Verde"] },
+  { id:"I", dates:"Jun 16–26", teams:["France","Senegal","Norway","Iraq"] },
+  { id:"J", dates:"Jun 16–27", teams:["Argentina","Austria","Algeria","Jordan"] },
+  { id:"K", dates:"Jun 17–27", teams:["Portugal","Colombia","DR Congo","Uzbekistan"] },
+  { id:"L", dates:"Jun 17–27", teams:["England","Croatia","Ghana","Panama"] },
+];
+
+const H2H = {
+  "Brazil_Germany":[{y:2014,h:"Germany",a:"Brazil",hs:7,as:1},{y:2002,h:"Brazil",a:"Germany",hs:2,as:0}],
+  "Germany_Brazil":[{y:2014,h:"Germany",a:"Brazil",hs:7,as:1},{y:2002,h:"Brazil",a:"Germany",hs:2,as:0}],
+  "France_Argentina":[{y:2022,h:"France",a:"Argentina",hs:2,as:3,pen:"Argentina"},{y:2018,h:"France",a:"Argentina",hs:4,as:3},{y:2006,h:"France",a:"Argentina",hs:1,as:1,pen:"France"}],
+  "Argentina_France":[{y:2022,h:"France",a:"Argentina",hs:2,as:3,pen:"Argentina"},{y:2018,h:"France",a:"Argentina",hs:4,as:3}],
+  "England_Germany":[{y:2010,h:"Germany",a:"England",hs:4,as:1},{y:1966,h:"England",a:"Germany",hs:4,as:2}],
+  "Germany_England":[{y:2010,h:"Germany",a:"England",hs:4,as:1},{y:1966,h:"England",a:"Germany",hs:4,as:2}],
+  "Spain_Netherlands":[{y:2010,h:"Spain",a:"Netherlands",hs:1,as:0},{y:2014,h:"Netherlands",a:"Spain",hs:5,as:1}],
+  "Netherlands_Spain":[{y:2010,h:"Spain",a:"Netherlands",hs:1,as:0},{y:2014,h:"Netherlands",a:"Spain",hs:5,as:1}],
+  "Brazil_Argentina":[{y:2021,h:"Argentina",a:"Brazil",hs:1,as:0},{y:2007,h:"Brazil",a:"Argentina",hs:3,as:0}],
+  "Argentina_Brazil":[{y:2021,h:"Argentina",a:"Brazil",hs:1,as:0},{y:2007,h:"Brazil",a:"Argentina",hs:3,as:0}],
+};
+
+/* ═══════════════════════════════════════════════
+   MODEL
+═══════════════════════════════════════════════ */
+function poissonP(lambda, k) {
+  let e = Math.exp(-lambda), r = e;
+  for (let i = 1; i <= k; i++) r *= lambda / i;
+  return r;
+}
+
+function calcMatch(home, away, venue, stage) {
+  const eloDiff = home.elo - away.elo;
+  const homeAdv = venue === 'home' ? 0.15 : 0;
+  const sf = {group:1.0,r16:0.95,qf:0.9,sf:0.85,final:0.8}[stage]||1;
+  const lH = Math.max(0.3, home.avgGoals*(1+eloDiff/4000+homeAdv)*sf);
+  const lA = Math.max(0.3, away.avgGoals*(1-eloDiff/4000)*sf);
+  let pH=0,pD=0,pA=0;
+  const mat=[];
+  for(let h=0;h<=5;h++){mat[h]=[];for(let a=0;a<=5;a++){const p=poissonP(lH,h)*poissonP(lA,a);mat[h][a]=p;if(h>a)pH+=p;else if(h===a)pD+=p;else pA+=p;}}
+  const tot=pH+pD+pA;
+  return {pH:Math.round(pH/tot*100),pD:Math.round(pD/tot*100),pA:Math.round(pA/tot*100),lH:lH.toFixed(2),lA:lA.toFixed(2),mat};
+}
+
+function bestScore(mat){
+  let best=0,bh=0,ba=0;
+  for(let h=0;h<=5;h++)for(let a=0;a<=5;a++)if(mat[h][a]>best){best=mat[h][a];bh=h;ba=a;}
+  return[bh,ba,Math.round(best*100)];
+}
+
+/* ═══════════════════════════════════════════════
+   INIT SELECTS
+═══════════════════════════════════════════════ */
+let selHome = TEAM_LIST.findIndex(t=>t.name==="Brazil");
+let selAway = TEAM_LIST.findIndex(t=>t.name==="Germany");
+
+function populateSelects(){
+  const hEl=document.getElementById('home-team'), aEl=document.getElementById('away-team');
+  TEAM_LIST.forEach((t,i)=>{
+    hEl.innerHTML+=`<option value="${i}">${t.flag} ${t.name}</option>`;
+    aEl.innerHTML+=`<option value="${i}">${t.flag} ${t.name}</option>`;
+  });
+  hEl.value=selHome; aEl.value=selAway;
+  updateTeam('home'); updateTeam('away');
+}
+
+function formHTML(form){
+  return form.map(f=>`<span class="form-dot" style="background:${f?'#10b981':'#ef4444'};"></span>`).join('');
+}
+
+function updateTeam(side){
+  const val=parseInt(document.getElementById(side+'-team').value);
+  if(side==='home') selHome=val; else selAway=val;
+  const t=TEAM_LIST[val];
+  document.getElementById('flag-'+side).textContent=t.flag;
+  document.getElementById('meta-'+side).innerHTML=
+    `<span>Elo <b>${t.elo}</b></span><span>Rank <b>#${t.rank}</b></span><span style="display:flex;align-items:center;gap:3px;">${formHTML(t.form)}</span>`;
+}
+
+/* ═══════════════════════════════════════════════
+   PREDICT
+═══════════════════════════════════════════════ */
+function predict(){
+  const home=TEAM_LIST[selHome], away=TEAM_LIST[selAway];
+  if(selHome===selAway){alert("Please select two different teams.");return;}
+  const venue=document.getElementById('venue').value, stage=document.getElementById('stage').value;
+  const res=calcMatch(home,away,venue,stage);
+  const [sh,sa,sp]=bestScore(res.mat);
+  const eloDiff=home.elo-away.elo;
+  const hForm=home.form.reduce((a,b)=>a+b,0), aForm=away.form.reduce((a,b)=>a+b,0);
+
+  document.getElementById('r-flag-home').textContent=home.flag;
+  document.getElementById('r-name-home').textContent=home.name;
+  document.getElementById('r-score-home').textContent=sh;
+  document.getElementById('r-xg-home').textContent=`xG: ${res.lH}`;
+  document.getElementById('r-flag-away').textContent=away.flag;
+  document.getElementById('r-name-away').textContent=away.name;
+  document.getElementById('r-score-away').textContent=sa;
+  document.getElementById('r-xg-away').textContent=`xG: ${res.lA}`;
+
+  let outcomeText, pillClass;
+  if(res.pH>res.pA&&res.pH>res.pD){outcomeText=home.name+' win likely';pillClass='pill-home';}
+  else if(res.pA>res.pH&&res.pA>res.pD){outcomeText=away.name+' win likely';pillClass='pill-away';}
+  else{outcomeText='Draw likely';pillClass='pill-draw';}
+  const op=document.getElementById('r-outcome');
+  op.textContent=outcomeText; op.className='outcome-pill '+pillClass;
+  document.getElementById('r-score-pct').textContent=`Most probable scoreline (${sp}% probability)`;
+
+  // Prob bars
+  const barColors=['#3b82f6','#64748b','#f97316'];
+  const labels=[home.name.length>10?home.name.slice(0,10)+'…':home.name+' win','Draw',away.name.length>10?away.name.slice(0,10)+'…':away.name+' win'];
+  const probs=[res.pH,res.pD,res.pA];
+  document.getElementById('prob-bars').innerHTML=probs.map((p,i)=>`
+    <div class="prob-row">
+      <span class="prob-label">${labels[i]}</span>
+      <div class="prob-track"><div class="prob-fill" style="width:${p}%;background:${barColors[i]};"></div></div>
+      <span class="prob-pct">${p}%</span>
+    </div>`).join('');
+
+  document.getElementById('stats-mini').innerHTML=`
+    <div class="stat-cell"><div class="stat-n">${res.lH}</div><div class="stat-l">${home.name} xG</div></div>
+    <div class="stat-cell"><div class="stat-n">${eloDiff>0?'+':''}${eloDiff}</div><div class="stat-l">Elo gap</div></div>
+    <div class="stat-cell"><div class="stat-n">${res.lA}</div><div class="stat-l">${away.name} xG</div></div>`;
+
+  // Heatmap
+  let hmHTML=`<div class="heatmap-x">`;
+  for(let a=0;a<=4;a++) hmHTML+=`<span>${away.name.slice(0,3)} ${a}</span>`;
+  hmHTML+=`</div>`;
+  for(let h=0;h<=4;h++){
+    hmHTML+=`<div class="heatmap-row"><span class="hm-label">${home.name.slice(0,3)} ${h}</span>`;
+    for(let a=0;a<=4;a++){
+      const p=res.mat[h][a]; const pct=Math.round(p*100);
+      const intensity=Math.min(p/0.2,1);
+      const r=Math.round(17+(59-17)*(1-intensity));
+      const g=Math.round(24+(130-24)*intensity);
+      const b=Math.round(36+(246-36)*intensity);
+      const textCol=intensity>0.5?'#e0f2fe':'#64748b';
+      hmHTML+=`<div class="hm-cell" style="background:rgba(${r},${g},${b},${0.2+intensity*0.7});color:${textCol};">${pct}%</div>`;
+    }
+    hmHTML+=`</div>`;
+  }
+  hmHTML+=`<div class="heatmap-legend">Darker blue = higher probability. Each cell = P(home goals – away goals).</div>`;
+  document.getElementById('heatmap-wrap').innerHTML=hmHTML;
+
+  // H2H
+  const key1=`${home.name}_${away.name}`, key2=`${away.name}_${home.name}`;
+  const h2h=H2H[key1]||H2H[key2];
+  if(h2h){
+    document.getElementById('h2h-content').innerHTML=`
+      <table class="h2h-table">
+        <thead><tr><th>Year</th><th>Match</th><th>Score</th><th>Result</th></tr></thead>
+        <tbody>${h2h.map(m=>{
+          const r=m.hs>m.as?'W':m.hs<m.as?'L':'D';
+          return`<tr><td>${m.y}</td><td>${m.h} vs ${m.a}</td><td><strong>${m.hs}–${m.as}</strong>${m.pen?` <span style="font-size:11px;color:var(--hint)">(${m.pen} pens)</span>`:''}</td><td><span class="res-badge res-${r}">${r}</span></td></tr>`;
+        }).join('')}</tbody>
+      </table>`;
+  } else {
+    document.getElementById('h2h-content').innerHTML=`<p style="color:var(--hint);font-size:13px;padding:8px 0;">No World Cup head-to-head data for this matchup.</p>`;
+  }
+
+  // Factors
+  document.getElementById('factors-grid').innerHTML=`
+    <div class="factor">⚡ Elo difference <span class="factor-val">${eloDiff>0?'▲':eloDiff<0?'▼':'='} ${Math.abs(eloDiff)} pts</span></div>
+    <div class="factor">📈 Home form <span class="factor-val">${hForm}/5 wins</span></div>
+    <div class="factor">📉 Away form <span class="factor-val">${aForm}/5 wins</span></div>
+    <div class="factor">📍 Venue <span class="factor-val">${venue==='neutral'?'Neutral':'Home adv.'}</span></div>`;
+
+  document.getElementById('result-card').classList.remove('result-hidden');
+  document.getElementById('result-card').scrollIntoView({behavior:'smooth',block:'nearest'});
+  switchTab('probs');
+}
+
+function switchTab(tab){
+  ['probs','heatmap','h2h'].forEach(t=>{
+    document.getElementById('tab-'+t).classList.toggle('active',t===tab);
+    document.getElementById('pane-'+t).classList.toggle('active',t===tab);
+  });
+}
+
+/* ═══════════════════════════════════════════════
+   RENDER GROUPS
+═══════════════════════════════════════════════ */
+function renderGroups(){
+  const grid=document.getElementById('groups-grid');
+  grid.innerHTML=GROUPS_DATA.map(g=>{
+    const rows=g.teams.map(name=>{
+      const t=TEAM_MAP[name];
+      if(!t) return '';
+      let badge='';
+      if(t.note==='host') badge=`<span class="tg-badge tg-host">host</span>`;
+      else if(t.note==='holder') badge=`<span class="tg-badge tg-holder">champion</span>`;
+      else if(t.note==='debut') badge=`<span class="tg-badge tg-debut">debut</span>`;
+      return`<div class="team-row-g">
+        <span class="tg-flag">${t.flag}</span>
+        <div class="tg-info"><div class="tg-name">${t.name}</div><div class="tg-conf">${t.conf}</div></div>
+        ${badge}
+      </div>`;
+    }).join('');
+    return`<div class="group-card">
+      <div class="group-head">
+        <span class="group-name-lbl">Group ${g.id}</span>
+        <span class="group-dates-lbl">${g.dates}</span>
+      </div>
+      ${rows}
+    </div>`;
+  }).join('');
+}
+
+populateSelects();
+renderGroups();
+predict();
+</script>
+</body>
+</html>
