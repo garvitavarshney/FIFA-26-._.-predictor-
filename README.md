@@ -2,8 +2,8 @@
 
 A match predictor I built for my CSE coursework, covering all 48 teams across the 12 groups of the 2026 World Cup. Pick any two teams and it predicts a scoreline and win probabilities using Poisson regression and Elo ratings.
 
-**Live:** [garvitavarshney.github.io/fifa-predictor](https://garvitavarshney.github.io/fifa-predictor)
-**Repo:** [github.com/garvitavarshney/fifa-predictor](https://github.com/garvitavarshney/fifa-predictor)
+**Live:** [garvitavarshney.github.io/FIFA-26-._.-predictor-](https://garvitavarshney.github.io/FIFA-26-._.-predictor-/)
+**Repo:** [github.com/garvitavarshney/FIFA-26-._.-predictor-](https://github.com/garvitavarshney/FIFA-26-._.-predictor-)
 
 [GitHub](https://github.com/garvitavarshney) · [LinkedIn](https://www.linkedin.com/in/garvita-varshney-b35858217/) · [Instagram](https://www.instagram.com/garvita._.varshney/) · [X](https://x.com/gvinjapiur)
 
